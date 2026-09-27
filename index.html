@@ -106,6 +106,14 @@ const GROUPS = [
     ],
   },
   {
+    title: "Daniel’s GitHub Pages",
+    links: [
+      { name: "CSS Atlas", url: "https://daniel-hopium.github.io/css-atlas/?lang=en#start", desc: "105 CSS properties and selectors with live previews", icon: "🎨" },
+      { name: "Fjord Kompass", url: "https://daniel-hopium.github.io/pattern-library/?lang=de", desc: "White-label UI pattern library that explains its own rules (DE)", icon: "🧭" },
+      { name: "ARIA Compass", url: "https://daniel-hopium.github.io/aria-compass/?lang=en#start", desc: "ARIA roles and states shown live in the accessibility tree", icon: "♿" },
+    ],
+  },
+  {
     title: "Not live yet",
     links: [
       { name: "Conspiracy Corner Library", url: "#", desc: "Static site in the repo, no container yet", icon: "📚", tag: "wip" },
@@ -121,7 +129,7 @@ document.getElementById("list").innerHTML = GROUPS.map(g => `
       <span class="body">
         <span class="name">${l.name}${l.tag ? `<span class="tag ${l.tag}">${l.tag}</span>` : ""}</span>
         <span class="desc">${l.desc}</span>
-        ${l.url.startsWith("http") ? `<span class="host">${l.url.replace(/^https?:\/\//, "")}</span>` : ""}
+        ${l.url.startsWith("http") ? `<span class="host">${l.url.replace(/^https?:\/\//, "").replace(/[?#].*$/, "")}</span>` : ""}
       </span>
     </a>`).join("")}
 `).join("");
