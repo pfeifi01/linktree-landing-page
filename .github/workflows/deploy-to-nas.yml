@@ -1,0 +1,114 @@
+name: Deploy to HOME-PF NAS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: links-production
+  cancel-in-progress: true
+
+env:
+  NAS_HOST: 100.80.47.99
+  NAS_USER: Martin
+  NAS_PROJECT_DIR: /volume1/Martin/Webhosting/docker/webhosting/links
+
+jobs:
+  deploy:
+    name: Deploy Links to NAS
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Connect runner to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:github-actions
+          ping: ${{ env.NAS_HOST }}
+
+      - name: Configure SSH
+        env:
+          NAS_SSH_PRIVATE_KEY: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+
+          printf '%s\n' "$NAS_SSH_PRIVATE_KEY" \
+            | tr -d '\r' \
+            > "$HOME/.ssh/links_deploy"
+
+          chmod 600 "$HOME/.ssh/links_deploy"
+
+          ssh-keyscan \
+            -T 10 \
+            -H "$NAS_HOST" \
+            >> "$HOME/.ssh/known_hosts"
+
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+          ssh-keygen -y \
+            -f "$HOME/.ssh/links_deploy" \
+            > /dev/null
+
+          echo "[OK] SSH private key is valid"
+
+      - name: Test NAS connection
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "$HOME/.ssh/links_deploy" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$NAS_USER@$NAS_HOST" \
+            "echo '[OK] Connected to Synology NAS'"
+
+      - name: Copy repository to NAS
+        run: |
+          set -euo pipefail
+
+          echo "[INFO] Copying repository to:"
+          echo "$NAS_PROJECT_DIR"
+
+          tar \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.env' \
+            -czf - . \
+          | ssh \
+              -i "$HOME/.ssh/links_deploy" \
+              -o IdentitiesOnly=yes \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              "$NAS_USER@$NAS_HOST" \
+              "mkdir -p '$NAS_PROJECT_DIR' &&
+               tar -xzf - -C '$NAS_PROJECT_DIR'"
+
+          echo "[OK] Repository copied to NAS"
+
+      - name: Rebuild and restart Links
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "$HOME/.ssh/links_deploy" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$NAS_USER@$NAS_HOST" \
+            "sudo /usr/local/bin/deploy-links"
+
+          echo "[OK] Links deployment completed"
