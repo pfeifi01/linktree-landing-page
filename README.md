@@ -55,4 +55,5 @@ NAS/GitHub/Cloudflare setup is in that guide, steps 3, 5, 6, 7 and 9.
 | 8086 | sales |
 | 8087 | uab (Daniel) |
 | 8088 | **links (this page)** |
+| 8089 | wow (WoW Forever duo helper) |
 | 8090 | (private, not listed here) |
